@@ -6,16 +6,32 @@ import time
 import telebot
 from telebot.types import ChatPermissions
 
-# Токен берётся из переменной окружения TOKEN_BOT (на хостинге / в Environment).
-# Если TOKEN_BOT не задан, используется запасной FALLBACK_TOKEN (удобно для теста на телефоне).
-FALLBACK_TOKEN = "ТВОЙ_ТОКЕН_ЗДЕСЬ"
-TOKEN = (os.environ.get("TOKEN_BOT") or FALLBACK_TOKEN).strip()
+# 1. На хостинге задай переменную окружения с именем TOKEN_BOT и значением токена.
+# 2. Либо впиши токен напрямую в FALLBACK_TOKEN ниже (для быстрого запуска/теста).
+FALLBACK_TOKEN = ""
+
+env_token = (os.environ.get("TOKEN_BOT") or "").strip()
+fallback_token = (FALLBACK_TOKEN or "").strip()
+
+if fallback_token == "ТВОЙ_ТОКЕН_ЗДЕСЬ":
+  fallback_token = ""
+
+print(
+    f"[DEBUG] TOKEN_BOT из env найден: {bool(env_token)} (длина: {len(env_token)})"
+)
+print(
+    f"[DEBUG] FALLBACK_TOKEN задан: {bool(fallback_token)} (длина: {len(fallback_token)})"
+)
+
+TOKEN = env_token or fallback_token
 TARGET_GROUP = "@chat_mafia_lol"
 
-if not TOKEN or TOKEN == "ТВОЙ_ТОКЕН_ЗДЕСЬ":
-  raise ValueError(
-      "Не задан токен бота! Укажи переменную окружения TOKEN_BOT в настройках"
-      " сервиса или впиши токен в FALLBACK_TOKEN."
+if not TOKEN:
+  raise RuntimeError(
+      "Токен не найден! Проверь:\n"
+      "1) В настройках Environment сервиса ключ называется точно TOKEN_BOT (без пробелов), а в значении стоит сам токен.\n"
+      "2) После сохранения Environment нажми Restart / Redeploy.\n"
+      "3) Или впиши токен в FALLBACK_TOKEN в main.py."
   )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -609,5 +625,11 @@ def handle_other_messages(message):
 
 threading.Thread(target=mute_watcher_loop, daemon=True).start()
 print("Бот Mafia/Crocodile запущен!")
-bot.infinity_polling(skip_pending=True)
+
+while True:
+  try:
+    bot.infinity_polling(skip_pending=True, timeout=30, long_polling_timeout=30)
+  except Exception as e:
+    print(f"[POLLING ERROR] {e}. Перезапуск через 5 секунд...")
+    time.sleep(5)
     
